@@ -884,16 +884,17 @@ export class SortingGameApp {
   private handleGameOver(result: GameResult): void {
     this.currentView = 'result';
 
-    const level = levels.find(l => l.id === result.levelId);
-    if (level) {
-      saveResult(result, level.unlockScore);
-    }
+    const nextLevel = levels.find(l => l.id === result.levelId + 1);
+    const unlockScore = nextLevel ? nextLevel.unlockScore : Infinity;
+    const wasNextUnlocked = this.histories.find(h => h.levelId === result.levelId + 1)?.unlocked ?? false;
+
+    saveResult(result, unlockScore);
     this.histories = loadHistory();
 
-    this.showResultScreen(result);
+    this.showResultScreen(result, wasNextUnlocked);
   }
 
-  private showResultScreen(result: GameResult): void {
+  private showResultScreen(result: GameResult, wasNextUnlocked: boolean): void {
     const level = levels.find(l => l.id === result.levelId);
     const history = this.histories.find(h => h.levelId === result.levelId);
     const isNewHigh = result.score >= (history?.highScore ?? 0) && result.score > 0;
@@ -924,7 +925,8 @@ export class SortingGameApp {
     `).join('');
 
     const nextLevel = levels.find(l => l.id === result.levelId + 1);
-    const justUnlocked = nextLevel && history?.unlocked && result.score >= (nextLevel?.unlockScore ?? Infinity);
+    const nextHistory = this.histories.find(h => h.levelId === result.levelId + 1);
+    const justUnlocked = !!nextLevel && !wasNextUnlocked && nextHistory?.unlocked === true;
 
     this.container.innerHTML = `
       <div class="result-screen">
@@ -996,7 +998,7 @@ export class SortingGameApp {
         <div class="result-buttons">
           <button class="btn btn-secondary" id="btn-back-levels">返回关卡</button>
           <button class="btn btn-primary" id="btn-retry">重新挑战</button>
-          ${nextLevel && history?.unlocked ? `
+          ${nextLevel && nextHistory?.unlocked ? `
             <button class="btn btn-success" id="btn-next">下一关 →</button>
           ` : ''}
         </div>

@@ -349,16 +349,20 @@ export class GameEngine {
   }
 
   markAsPending(materialId: string): void {
-    const material = this.pendingMaterials.find(m => m.id === materialId);
-    if (material && !material.isPending) {
-      material.isPending = true;
-      this.pendingMaterials_list.push(material);
-      this.stats.pendingUnreviewed++;
-      this.emit('pendingAdded', material);
-    }
+    const materialIndex = this.pendingMaterials.findIndex(m => m.id === materialId);
+    if (materialIndex === -1) return;
+    const material = this.pendingMaterials[materialIndex];
+    if (material.isPending) return;
+    material.isPending = true;
+    this.pendingMaterials.splice(materialIndex, 1);
+    this.pendingMaterials_list.push(material);
+    this.materialSpawnTimes.delete(material.id);
+    this.stats.pendingUnreviewed++;
+    this.emit('pendingAdded', material);
   }
 
   reviewPending(materialId: string, bagId: string): boolean {
+    if (this.processedMaterials.has(materialId)) return false;
     const index = this.pendingMaterials_list.findIndex(m => m.id === materialId);
     if (index === -1) return false;
 
@@ -366,6 +370,8 @@ export class GameEngine {
     material.isPending = false;
     this.pendingMaterials_list.splice(index, 1);
     this.stats.pendingUnreviewed--;
+    this.processedMaterials.add(material.id);
+    this.materialSpawnTimes.delete(material.id);
 
     const result = this.placeMaterialDirectly(material, bagId);
     this.emit('pendingReviewed', material, result);
